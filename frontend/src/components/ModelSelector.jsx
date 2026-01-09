@@ -6,6 +6,7 @@ import './ModelSelector.css';
 const LAST_USED_KEY = 'llm-council-last-selection';
 const LAST_CHAIRMAN_KEY = 'llm-council-last-chairman';
 const LAST_EXECUTION_MODE_KEY = 'llm-council-last-execution-mode';
+const LAST_ROUTER_TYPE_KEY = 'llm-council-last-router-type';
 
 // Default max models (can be overridden by backend config)
 const DEFAULT_MAX_MODELS = 5;
@@ -55,6 +56,7 @@ export default function ModelSelector({ isOpen, onClose, onConfirm }) {
   const [selectedModels, setSelectedModels] = useState([]);
   const [chairmanModel, setChairmanModel] = useState('');
   const [executionMode, setExecutionMode] = useState('full'); // chat_only | chat_ranking | full
+  const [routerType, setRouterType] = useState('openrouter'); // openrouter | ollama
   const [activePreset, setActivePreset] = useState(null);
   const [maxModels, setMaxModels] = useState(DEFAULT_MAX_MODELS);
 
@@ -83,12 +85,15 @@ export default function ModelSelector({ isOpen, onClose, onConfirm }) {
     }
   }, [allModels, isOpen]);
 
-  const loadModels = async () => {
+  const loadModels = async (forcedRouterType) => {
     setIsLoadingModels(true);
     setLoadError(null);
     try {
-      const data = await api.getModels();
+      const data = await api.getModels({ routerType: forcedRouterType || routerType });
       setAllModels(data.models || []);
+      if (data.router_type) {
+        setRouterType(data.router_type);
+      }
       // Get max_models from backend config if provided
       if (data.max_models) {
         setMaxModels(data.max_models);
@@ -105,7 +110,13 @@ export default function ModelSelector({ isOpen, onClose, onConfirm }) {
     try {
       const saved = localStorage.getItem(LAST_USED_KEY);
       if (saved) {
-        const { models, chairman, executionMode: savedMode } = JSON.parse(saved);
+        const { models, chairman, executionMode: savedMode, routerType: savedRouterType } = JSON.parse(saved);
+
+        if (savedRouterType && savedRouterType !== routerType) {
+          setRouterType(savedRouterType);
+          loadModels(savedRouterType);
+          return;
+        }
         // Verify models still exist
         const validModels = models.filter((m) => allModels.some((am) => am.id === m));
         const validChairman = allModels.some((am) => am.id === chairman) ? chairman : '';
@@ -129,11 +140,11 @@ export default function ModelSelector({ isOpen, onClose, onConfirm }) {
     applyPreset('free');
   };
 
-  const saveLastUsedSelection = (models, chairman, mode) => {
+  const saveLastUsedSelection = (models, chairman, mode, rt) => {
     try {
       localStorage.setItem(
         LAST_USED_KEY,
-        JSON.stringify({ models, chairman, executionMode: mode, timestamp: Date.now() })
+        JSON.stringify({ models, chairman, executionMode: mode, routerType: rt, timestamp: Date.now() })
       );
       // Also save chairman separately for quick access
       if (chairman) {
@@ -141,6 +152,9 @@ export default function ModelSelector({ isOpen, onClose, onConfirm }) {
       }
       if (mode) {
         localStorage.setItem(LAST_EXECUTION_MODE_KEY, mode);
+      }
+      if (rt) {
+        localStorage.setItem(LAST_ROUTER_TYPE_KEY, rt);
       }
     } catch (e) {
       console.error('Failed to save last selection:', e);
@@ -332,12 +346,13 @@ export default function ModelSelector({ isOpen, onClose, onConfirm }) {
   const handleConfirm = () => {
     if (selectedModels.length >= MIN_MODELS && chairmanModel) {
       // Save as last used
-      saveLastUsedSelection(selectedModels, chairmanModel, executionMode);
+      saveLastUsedSelection(selectedModels, chairmanModel, executionMode, routerType);
 
       onConfirm({
         models: selectedModels,
         chairman: chairmanModel,
         executionMode,
+        routerType,
       });
       onClose();
     }
@@ -349,6 +364,17 @@ export default function ModelSelector({ isOpen, onClose, onConfirm }) {
     setTierFilter('');
     setFreeOnlyFilter(false);
     setSortBy('price-asc');
+  };
+
+  const handleRouterTypeChange = async (nextType) => {
+    setRouterType(nextType);
+    setSelectedModels([]);
+    setChairmanModel('');
+    setActivePreset(null);
+    setProviderFilter('');
+    setTierFilter('');
+    setFreeOnlyFilter(false);
+    await loadModels(nextType);
   };
 
   const isValid = selectedModels.length >= MIN_MODELS && chairmanModel;
@@ -484,6 +510,31 @@ export default function ModelSelector({ isOpen, onClose, onConfirm }) {
             </select>
             <div style={{ opacity: 0.8, fontSize: '13px', lineHeight: 1.4 }}>
               Choose how deep the council deliberates for this conversation.
+            </div>
+          </div>
+        </div>
+
+        {/* Router */}
+        <div className="selected-models-section" style={{ paddingTop: 0 }}>
+          <h3>Router</h3>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <select
+              value={routerType}
+              onChange={(e) => handleRouterTypeChange(e.target.value)}
+              style={{
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                color: '#fff',
+                padding: '10px 12px',
+                borderRadius: '10px',
+                minWidth: '240px'
+              }}
+            >
+              <option value="openrouter">OpenRouter</option>
+              <option value="ollama">Ollama (Local)</option>
+            </select>
+            <div style={{ opacity: 0.8, fontSize: '13px', lineHeight: 1.4 }}>
+              Select the provider for this conversation. No fallback.
             </div>
           </div>
         </div>

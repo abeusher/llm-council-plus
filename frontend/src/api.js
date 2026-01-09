@@ -152,6 +152,9 @@ export const api = {
     if (options.executionMode) {
       body.execution_mode = options.executionMode;
     }
+    if (options.routerType) {
+      body.router_type = options.routerType;
+    }
     if (options.username) {
       body.username = options.username;
     }
@@ -516,8 +519,15 @@ export const api = {
    * Get available models from OpenRouter or Ollama. (Public endpoint)
    * @returns {Promise<{models: Array, router_type: string, count: number}>}
    */
-  async getModels() {
-    const response = await fetch(`${API_BASE}/api/models`);
+  async getModels(options = {}) {
+    const params = new URLSearchParams();
+    if (options.routerType) {
+      params.set('router_type', options.routerType);
+    }
+    const qs = params.toString();
+    const url = `${API_BASE}/api/models${qs ? `?${qs}` : ''}`;
+
+    const response = await fetch(url);
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.detail || 'Failed to fetch models');
