@@ -81,6 +81,23 @@
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+.search-context-result-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  cursor: pointer;
+  list-style: none;
+}
+
+/* Remove default marker in modern browsers */
+.search-context-result-summary::-webkit-details-marker {
+  display: none;
+}
+
+.search-context-result-title {
+  font-weight: 700;
+}
+
 .search-context-result-title a {
   color: var(--accent-blue);
   font-weight: 700;
@@ -89,6 +106,13 @@
 
 .search-context-result-title a:hover {
   text-decoration: underline;
+}
+
+.search-context-result-domain {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
 }
 
 .search-context-result-body {
@@ -118,4 +142,3 @@
   max-height: 260px;
   overflow: auto;
 }
-

@@ -51,6 +51,17 @@ function parseWebSearchText(text) {
   return parsed.length ? parsed : null;
 }
 
+function getDomain(url) {
+  if (!url) return '';
+  try {
+    const u = new URL(url);
+    return u.hostname.replace(/^www\./, '');
+  } catch {
+    // Fallback for non-URL strings
+    return url.replace(/^https?:\/\//, '').split('/')[0].replace(/^www\./, '');
+  }
+}
+
 function normalizeToolName(tool) {
   if (!tool) return '';
   // e.g. "web_search:duckduckgo" -> "DuckDuckGo"
@@ -118,22 +129,33 @@ export default function SearchContext({ toolOutputs }) {
 
               {e.parsedKind === 'results' && (
                 <div className="search-context-results">
-                  {e.parsed.map((r, i) => (
-                    <div key={i} className="search-context-result">
-                      <div className="search-context-result-title">
-                        {r.url ? (
-                          <a href={r.url} target="_blank" rel="noreferrer">
-                            {r.title || r.url}
-                          </a>
-                        ) : (
-                          <span>{r.title || 'Untitled result'}</span>
+                  {e.parsed.map((r, i) => {
+                    const domain = getDomain(r.url);
+                    return (
+                      <details key={i} className="search-context-result">
+                        <summary className="search-context-result-summary">
+                          <span className="search-context-result-title">
+                            {r.url ? (
+                              <a
+                                href={r.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(ev) => ev.stopPropagation()}
+                              >
+                                {r.title || r.url}
+                              </a>
+                            ) : (
+                              <span>{r.title || 'Untitled result'}</span>
+                            )}
+                          </span>
+                          {domain && <span className="search-context-result-domain">{domain}</span>}
+                        </summary>
+                        {r.body && (
+                          <pre className="search-context-result-body">{r.body}</pre>
                         )}
-                      </div>
-                      {r.body && (
-                        <pre className="search-context-result-body">{r.body}</pre>
-                      )}
-                    </div>
-                  ))}
+                      </details>
+                    );
+                  })}
                 </div>
               )}
 
@@ -160,4 +182,3 @@ SearchContext.propTypes = {
     })
   ),
 };
-
