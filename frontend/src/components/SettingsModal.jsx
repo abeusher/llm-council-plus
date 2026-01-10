@@ -28,6 +28,9 @@ const RUNTIME_SETTINGS_KEYS = [
   'council_temperature',
   'stage2_temperature',
   'chairman_temperature',
+  'web_search_provider',
+  'web_max_results',
+  'web_full_content_results',
 ];
 
 function sanitizeRuntimeSettingsJson(value) {
@@ -49,7 +52,7 @@ function sanitizeRuntimeSettingsJson(value) {
 }
 
 export default function SettingsModal({ isOpen, onClose }) {
-  const [activeTab, setActiveTab] = useState('prompts'); // prompts | temps | backup
+  const [activeTab, setActiveTab] = useState('prompts'); // prompts | temps | search | backup
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
@@ -112,7 +115,7 @@ export default function SettingsModal({ isOpen, onClose }) {
   };
 
   const handleReset = async () => {
-    if (!window.confirm('Reset prompts and temperatures to defaults?')) return;
+    if (!window.confirm('Reset runtime settings to defaults?')) return;
     setIsSaving(true);
     setError('');
     setSuccess('');
@@ -192,6 +195,12 @@ export default function SettingsModal({ isOpen, onClose }) {
             onClick={() => setActiveTab('temps')}
           >
             Temperatures
+          </button>
+          <button
+            className={`settings-tab ${activeTab === 'search' ? 'active' : ''}`}
+            onClick={() => setActiveTab('search')}
+          >
+            Web Search
           </button>
           <button
             className={`settings-tab ${activeTab === 'backup' ? 'active' : ''}`}
@@ -277,10 +286,69 @@ export default function SettingsModal({ isOpen, onClose }) {
             </div>
           )}
 
+          {!isLoading && draft && activeTab === 'search' && (
+            <div className="settings-section">
+              <div className="settings-field">
+                <label>Default Provider</label>
+                <div className="settings-hint">
+                  Provider selection and fetch limits are stored here. API keys are not stored or exported.
+                </div>
+                <select
+                  value={draft.web_search_provider || 'duckduckgo'}
+                  onChange={(e) => setDraft((p) => ({ ...p, web_search_provider: e.target.value }))}
+                  style={{
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    color: '#fff',
+                    padding: '10px 12px',
+                    borderRadius: '10px',
+                    width: '100%',
+                    maxWidth: '420px',
+                  }}
+                >
+                  <option value="off">Off</option>
+                  <option value="duckduckgo">DuckDuckGo (free)</option>
+                  <option value="tavily">Tavily</option>
+                  <option value="exa">Exa</option>
+                  <option value="brave">Brave</option>
+                </select>
+              </div>
+
+              <div className="settings-field">
+                <label>Max Results: <span className="settings-value">{Number(draft.web_max_results ?? 5)}</span></label>
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  step="1"
+                  value={clampNumber(draft.web_max_results ?? 5, 1, 10)}
+                  onChange={(e) => setDraft((p) => ({ ...p, web_max_results: Number(e.target.value) }))}
+                />
+              </div>
+
+              <div className="settings-field">
+                <label>
+                  Full Article Fetch (Jina Reader): <span className="settings-value">{Number(draft.web_full_content_results ?? 0)}</span>
+                </label>
+                <div className="settings-hint">
+                  Fetch full content for top N results when using DuckDuckGo/Brave. Set 0 to disable.
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="10"
+                  step="1"
+                  value={clampNumber(draft.web_full_content_results ?? 0, 0, 10)}
+                  onChange={(e) => setDraft((p) => ({ ...p, web_full_content_results: Number(e.target.value) }))}
+                />
+              </div>
+            </div>
+          )}
+
           {!isLoading && draft && activeTab === 'backup' && (
             <div className="settings-section">
               <p className="settings-hint">
-                Export/import contains prompts and temperatures only. API keys and other secrets are not included.
+                Export/import contains non-secret runtime settings only. API keys and other secrets are not included.
               </p>
               <div className="settings-actions-row">
                 <button className="settings-btn" onClick={handleExport}>Export JSON</button>

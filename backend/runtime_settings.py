@@ -1,6 +1,6 @@
 """Runtime (non-secret) settings persisted to disk.
 
-This module stores editable prompt templates and per-stage temperatures.
+This module stores editable prompt templates, per-stage temperatures, and other non-secret runtime options.
 
 Design goals:
 - Safe to persist inside Docker volumes (`data/`).
@@ -91,6 +91,11 @@ class RuntimeSettings(BaseModel):
     stage2_temperature: float = Field(default=0.3, ge=0.0, le=2.0)
     chairman_temperature: float = Field(default=0.4, ge=0.0, le=2.0)
 
+    # Web search (non-secret). API keys stay in env / setup wizard.
+    web_search_provider: str = Field(default="duckduckgo")  # off | duckduckgo | tavily | exa | brave
+    web_max_results: int = Field(default=5, ge=1, le=10)
+    web_full_content_results: int = Field(default=0, ge=0, le=10)  # Jina Reader fetches for top N
+
 
 def default_runtime_settings() -> RuntimeSettings:
     return RuntimeSettings()
@@ -143,4 +148,3 @@ def reset_runtime_settings() -> RuntimeSettings:
     settings = default_runtime_settings()
     save_runtime_settings(settings)
     return settings
-

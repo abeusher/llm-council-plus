@@ -70,11 +70,13 @@ export default function ChatInterface({
   webSearchAvailable = false,
   tavilyEnabled = false,
   exaEnabled = false,
+  duckduckgoEnabled = false,
+  braveEnabled = false,
 }) {
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [webSearchProvider, setWebSearchProvider] = useState('off'); // 'off', 'tavily', 'exa'
+  const [webSearchProvider, setWebSearchProvider] = useState('off'); // 'off', 'duckduckgo', 'tavily', 'exa', 'brave'
   const [driveStatus, setDriveStatus] = useState({ enabled: false, configured: false });
   const [driveUploading, setDriveUploading] = useState({});
   const [driveUploaded, setDriveUploaded] = useState({});
@@ -452,8 +454,10 @@ export default function ChatInterface({
                   className="search-provider-select"
                 >
                   <option value="off">Off</option>
+                  {duckduckgoEnabled && <option value="duckduckgo">DuckDuckGo</option>}
                   {tavilyEnabled && <option value="tavily">Tavily</option>}
                   {exaEnabled && <option value="exa">Exa AI</option>}
+                  {braveEnabled && <option value="brave">Brave</option>}
                 </select>
               </div>
             )}

@@ -98,6 +98,7 @@ from .config import (
     ENABLE_MEMORY
 )
 from .tools import get_available_tools
+from . import web_search as web_search_module
 from .memory import CouncilMemorySystem
 from . import runtime_settings
 from . import router_dispatch
@@ -353,6 +354,38 @@ def run_tavily_direct(query: str, provider: str = None) -> List[Dict[str, str]]:
         logger.error("[WEB_SEARCH] %s search failed: %s", tool_name, e)
 
     return []
+
+
+async def run_web_search_direct(
+    query: str,
+    *,
+    provider: str,
+    max_results: int = 5,
+    full_content_results: int = 0,
+) -> List[Dict[str, str]]:
+    """
+    Run web search directly with a specific provider (no fallback).
+
+    Supported providers:
+    - duckduckgo (free, via ddgs; optional full content via Jina Reader)
+    - brave (API key; optional full content via Jina Reader)
+    - tavily / exa (delegated to existing tools layer)
+    """
+    p = (provider or "").strip().lower()
+    if p in {"tavily", "exa"}:
+        return run_tavily_direct(query, provider=p)
+
+    try:
+        results = await web_search_module.perform_web_search(
+            query,
+            provider=p,
+            max_results=max_results,
+            full_content_results=full_content_results,
+        )
+        return [{"tool": f"web_search:{p}", "result": results}]
+    except Exception as e:
+        logger.error("[WEB_SEARCH] provider=%s failed: %s", p, e)
+        return [{"tool": f"web_search:{p}", "result": "[System Note: Web search failed.]"}]
 
 
 def extract_ticker_candidates(text: str) -> List[str]:
@@ -631,7 +664,7 @@ async def stage1_collect_responses_streaming(
         models: Optional list of model IDs to use (defaults to COUNCIL_MODELS)
         images: Optional list of image attachments for multimodal queries
         conversation_id: Optional conversation ID for memory system
-        web_search_provider: Optional search provider ('tavily' or 'exa') to force web search
+        web_search_provider: Optional search provider ('duckduckgo', 'tavily', 'exa', 'brave') to force web search
         chairman: Optional chairman model for search query optimization
 
     Yields:
@@ -648,7 +681,14 @@ async def stage1_collect_responses_streaming(
     if web_search_provider:
         logger.info("[STAGE1-STREAM] Web search enabled (provider=%s), optimizing query with Chairman", web_search_provider)
         optimized_query = await optimize_search_query(user_query, chairman, router_type=router_type)
-        tool_outputs = run_tavily_direct(optimized_query, provider=web_search_provider)
+        full_content_results = int(getattr(settings, "web_full_content_results", 0) or 0)
+        max_results = int(getattr(settings, "web_max_results", 5) or 5)
+        tool_outputs = await run_web_search_direct(
+            optimized_query,
+            provider=web_search_provider,
+            max_results=max_results,
+            full_content_results=full_content_results,
+        )
         logger.info("[STAGE1-STREAM] Web search returned %d results", len(tool_outputs))
     # Regular tool detection (Feature 4)
     elif requires_tools(user_query):

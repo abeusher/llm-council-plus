@@ -7,6 +7,7 @@ export default function SetupWizard({ onComplete }) {
   const [apiKey, setApiKey] = useState('');
   const [tavilyKey, setTavilyKey] = useState('');
   const [exaKey, setExaKey] = useState('');
+  const [braveKey, setBraveKey] = useState('');
   // Authentication state
   const [authEnabled, setAuthEnabled] = useState(false);
   const [jwtSecret, setJwtSecret] = useState('');
@@ -101,6 +102,10 @@ export default function SetupWizard({ onComplete }) {
       // Add Exa key if provided (optional)
       if (exaKey) {
         config.exa_api_key = exaKey;
+      }
+      // Add Brave key if provided (optional)
+      if (braveKey) {
+        config.brave_api_key = braveKey;
       }
       // Add auth config if enabled
       config.auth_enabled = authEnabled;
@@ -259,6 +264,25 @@ export default function SetupWizard({ onComplete }) {
               <a href="https://exa.ai" target="_blank" rel="noopener noreferrer">
                 exa.ai
               </a>
+            </p>
+          </div>
+
+          {/* Optional: Brave API Key for Web Search */}
+          <div className="form-group">
+            <label htmlFor="braveKey" className="form-label">
+              Brave Search API Key <span className="optional-badge">Optional</span>
+            </label>
+            <input
+              id="braveKey"
+              type="password"
+              value={braveKey}
+              onChange={(e) => setBraveKey(e.target.value)}
+              placeholder="..."
+              className="form-input"
+              disabled={isLoading}
+            />
+            <p className="form-hint">
+              Enables Brave Search. Provide your Brave Search API key.
             </p>
           </div>
 

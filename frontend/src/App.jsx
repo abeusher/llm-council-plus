@@ -26,6 +26,8 @@ function App() {
   const [webSearchAvailable, setWebSearchAvailable] = useState(false);
   const [tavilyEnabled, setTavilyEnabled] = useState(false);
   const [exaEnabled, setExaEnabled] = useState(false);
+  const [duckduckgoEnabled, setDuckduckgoEnabled] = useState(false);
+  const [braveEnabled, setBraveEnabled] = useState(false);
   const [toasts, setToasts] = useState([]);
   const pendingMessageRef = useRef(null);
   const toastIdRef = useRef(0);
@@ -86,11 +88,13 @@ function App() {
   // Check setup status first - if API key is missing, show wizard
   useEffect(() => {
     api.getSetupStatus()
-      .then(({ setup_required, web_search_enabled, tavily_enabled, exa_enabled }) => {
+      .then(({ setup_required, web_search_enabled, tavily_enabled, exa_enabled, duckduckgo_enabled, brave_enabled }) => {
         setSetupRequired(setup_required);
         setWebSearchAvailable(web_search_enabled || false);
         setTavilyEnabled(tavily_enabled || false);
         setExaEnabled(exa_enabled || false);
+        setDuckduckgoEnabled(duckduckgo_enabled || false);
+        setBraveEnabled(brave_enabled || false);
         setSetupChecked(true);
       })
       .catch((err) => {
@@ -651,6 +655,8 @@ function App() {
         webSearchAvailable={webSearchAvailable}
         tavilyEnabled={tavilyEnabled}
         exaEnabled={exaEnabled}
+        duckduckgoEnabled={duckduckgoEnabled}
+        braveEnabled={braveEnabled}
       />
       <ModelSelector
         isOpen={showModelSelector}

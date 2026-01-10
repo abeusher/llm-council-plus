@@ -147,7 +147,7 @@ class SendMessageRequest(BaseModel):
     attachments: Optional[List[FileAttachment]] = Field(default=None, max_length=5)  # Max 5 attachments
     temporary: Optional[bool] = False  # If True, don't save to storage (Feature 5)
     web_search: Optional[bool] = False  # DEPRECATED: use web_search_provider
-    web_search_provider: Optional[str] = Field(default=None, pattern="^(tavily|exa)$")  # 'tavily' or 'exa'
+    web_search_provider: Optional[str] = Field(default=None, pattern="^(duckduckgo|tavily|exa|brave)$")
 
     @field_validator('attachments')
     @classmethod
@@ -198,6 +198,10 @@ class UpdateRuntimeSettingsRequest(BaseModel):
     council_temperature: Optional[float] = Field(default=None, ge=0.0, le=2.0)
     stage2_temperature: Optional[float] = Field(default=None, ge=0.0, le=2.0)
     chairman_temperature: Optional[float] = Field(default=None, ge=0.0, le=2.0)
+
+    web_search_provider: Optional[str] = Field(default=None, pattern="^(off|duckduckgo|tavily|exa|brave)$")
+    web_max_results: Optional[int] = Field(default=None, ge=1, le=10)
+    web_full_content_results: Optional[int] = Field(default=None, ge=0, le=10)
 
 
 @app.get("/")
@@ -271,6 +275,7 @@ class SetupConfigRequest(BaseModel):
     router_type: Optional[str] = Field(default=None, pattern="^(openrouter|ollama)$")
     tavily_api_key: Optional[str] = Field(default=None, max_length=200)  # Optional: for web search
     exa_api_key: Optional[str] = Field(default=None, max_length=200)  # Optional: for AI-powered web search
+    brave_api_key: Optional[str] = Field(default=None, max_length=200)  # Optional: for Brave search
     # Authentication settings
     auth_enabled: Optional[bool] = Field(default=None)
     jwt_secret: Optional[str] = Field(default=None, min_length=32, max_length=100)
@@ -287,22 +292,28 @@ async def get_setup_status():
     from .config import (
         ROUTER_TYPE, OPENROUTER_API_KEY,
         ENABLE_TAVILY, TAVILY_API_KEY,
-        ENABLE_EXA, EXA_API_KEY
+        ENABLE_EXA, EXA_API_KEY,
+        ENABLE_BRAVE, BRAVE_API_KEY,
     )
+    from .web_search import duckduckgo_available
 
     needs_setup = ROUTER_TYPE == "openrouter" and not OPENROUTER_API_KEY
     # Web search is enabled if either Tavily or Exa is configured
     tavily_enabled = ENABLE_TAVILY and bool(TAVILY_API_KEY)
     exa_enabled = ENABLE_EXA and bool(EXA_API_KEY)
-    web_search_enabled = tavily_enabled or exa_enabled
+    brave_enabled = ENABLE_BRAVE and bool(BRAVE_API_KEY)
+    duckduckgo_enabled = duckduckgo_available()
+    web_search_enabled = tavily_enabled or exa_enabled or brave_enabled or duckduckgo_enabled
 
     return {
         "setup_required": needs_setup,
         "router_type": ROUTER_TYPE,
         "has_api_key": bool(OPENROUTER_API_KEY),
         "web_search_enabled": web_search_enabled,
+        "duckduckgo_enabled": duckduckgo_enabled,
         "tavily_enabled": tavily_enabled,
         "exa_enabled": exa_enabled,
+        "brave_enabled": brave_enabled,
         "message": "OpenRouter API key required" if needs_setup else "Configuration OK"
     }
 
@@ -361,6 +372,9 @@ async def save_setup_config(request: SetupConfigRequest):
     if request.exa_api_key:
         updates["EXA_API_KEY"] = request.exa_api_key
         updates["ENABLE_EXA"] = "true"  # Auto-enable when key is provided
+    if request.brave_api_key:
+        updates["BRAVE_API_KEY"] = request.brave_api_key
+        updates["ENABLE_BRAVE"] = "true"  # Auto-enable when key is provided
     # Authentication settings
     if request.auth_enabled is not None:
         updates["AUTH_ENABLED"] = "true" if request.auth_enabled else "false"

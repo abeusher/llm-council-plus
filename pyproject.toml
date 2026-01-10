@@ -30,4 +30,5 @@ dependencies = [
     "langchain>=0.1.0",
     "langchain-community>=0.0.20",
     "python-multipart>=0.0.21",
+    "ddgs>=9.10.0",
 ]
