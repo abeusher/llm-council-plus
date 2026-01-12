@@ -1,5 +1,5 @@
 /**
- * Frontend Logger - Captures browser errors, warnings, and fatal events
+ * Frontend Logger - Captures all browser console events (log, info, debug, warn, error, trace)
  * and sends them to the backend for logging to logs/frontend.log
  */
 
@@ -220,6 +220,100 @@ export function initFrontendLogger() {
     });
   };
 
+  // Intercept console.log to also log to backend
+  const originalConsoleLog = console.log;
+  console.log = (...args) => {
+    originalConsoleLog.apply(console, args);
+
+    const message = args.map((arg) => {
+      if (typeof arg === 'object') {
+        try {
+          return JSON.stringify(arg);
+        } catch {
+          return String(arg);
+        }
+      }
+      return String(arg);
+    }).join(' ');
+
+    frontendLogger.info(message, {
+      component: 'console.log',
+    });
+  };
+
+  // Intercept console.info to also log to backend
+  const originalConsoleInfo = console.info;
+  console.info = (...args) => {
+    originalConsoleInfo.apply(console, args);
+
+    const message = args.map((arg) => {
+      if (typeof arg === 'object') {
+        try {
+          return JSON.stringify(arg);
+        } catch {
+          return String(arg);
+        }
+      }
+      return String(arg);
+    }).join(' ');
+
+    frontendLogger.info(message, {
+      component: 'console.info',
+    });
+  };
+
+  // Intercept console.debug to also log to backend
+  // Note: We use the stored original to avoid recursion with our internal debug calls
+  const originalConsoleDebug = console.debug;
+  console.debug = (...args) => {
+    originalConsoleDebug.apply(console, args);
+
+    // Skip our own internal logger messages to avoid recursion
+    if (args[0] && String(args[0]).startsWith('[FrontendLogger]')) {
+      return;
+    }
+
+    const message = args.map((arg) => {
+      if (typeof arg === 'object') {
+        try {
+          return JSON.stringify(arg);
+        } catch {
+          return String(arg);
+        }
+      }
+      return String(arg);
+    }).join(' ');
+
+    frontendLogger.debug(message, {
+      component: 'console.debug',
+    });
+  };
+
+  // Intercept console.trace to also log to backend
+  const originalConsoleTrace = console.trace;
+  console.trace = (...args) => {
+    originalConsoleTrace.apply(console, args);
+
+    const message = args.map((arg) => {
+      if (typeof arg === 'object') {
+        try {
+          return JSON.stringify(arg);
+        } catch {
+          return String(arg);
+        }
+      }
+      return String(arg);
+    }).join(' ');
+
+    // Capture the stack trace
+    const stackTrace = new Error().stack;
+
+    frontendLogger.debug(message || 'console.trace', {
+      stackTrace,
+      component: 'console.trace',
+    });
+  };
+
   // Flush logs before page unload
   window.addEventListener('beforeunload', () => {
     frontendLogger.flush();
@@ -232,7 +326,7 @@ export function initFrontendLogger() {
     }
   });
 
-  frontendLogger.info('Frontend logger initialized', {
+  frontendLogger.info('Frontend logger initialized - capturing all console events (log, info, debug, warn, error, trace)', {
     component: 'FrontendLogger',
   });
 }
