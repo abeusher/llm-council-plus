@@ -47,6 +47,7 @@ from .auth import LoginRequest, authenticate, validate_auth_token, validate_toke
 from .config import AUTH_ENABLED, MIN_CHAIRMAN_CONTEXT, ROUTER_TYPE
 from .gdrive import upload_to_drive, get_drive_status, is_drive_configured
 from .database import init_database
+from .frontend_logger import log_frontend_event, FrontendLogEntry, FrontendLogBatch
 from .runtime_settings import (
     RuntimeSettings,
     get_runtime_settings,
@@ -1374,6 +1375,50 @@ async def drive_upload(
             status_code=500,
             detail=f"Failed to upload to Google Drive: {str(e)}"
         )
+
+
+# ==================== Frontend Logging Endpoints ====================
+
+@app.post("/api/logs/frontend")
+async def log_frontend_event_endpoint(
+    entry: FrontendLogEntry,
+    x_forwarded_for: Optional[str] = Header(None),
+    x_real_ip: Optional[str] = Header(None),
+):
+    """
+    Log a frontend browser event (error, warning, etc.).
+    Public endpoint - no auth required to ensure errors can be logged
+    even when auth fails.
+    """
+    # Get client IP from headers (behind nginx proxy)
+    client_ip = x_forwarded_for or x_real_ip
+
+    success = log_frontend_event(entry, client_ip)
+
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to log event")
+
+    return {"success": True}
+
+
+@app.post("/api/logs/frontend/batch")
+async def log_frontend_events_batch(
+    batch: FrontendLogBatch,
+    x_forwarded_for: Optional[str] = Header(None),
+    x_real_ip: Optional[str] = Header(None),
+):
+    """
+    Log multiple frontend events in a single request.
+    Public endpoint - no auth required.
+    """
+    client_ip = x_forwarded_for or x_real_ip
+    logged = 0
+
+    for entry in batch.entries:
+        if log_frontend_event(entry, client_ip):
+            logged += 1
+
+    return {"success": True, "logged": logged, "total": len(batch.entries)}
 
 
 if __name__ == "__main__":

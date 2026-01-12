@@ -40,7 +40,8 @@ frontend/.vite/
 
 # Logs
 *.log
-logs/
+logs/*
+!logs/.gitkeep
 
 # SSL certificates (local development)
 ssl/
