@@ -371,6 +371,14 @@ COPY frontend/ ./
 RUN npm run build
 CMD ["npm", "run", "preview"]
 EXPOSE 5173
+
+### Common Docker Issues
+
+**Permission Denied (500 Error)**
+If you see a 500 Internal Server Error when creating a conversation, it's likely a permission issue with the mounted volumes. The backend container runs as a non-root user (UID 1000). Ensure the host directories have the correct ownership:
+```bash
+sudo chown -R 1000:1000 data credentials
+```
 ```
 
 ### Docker Compose
